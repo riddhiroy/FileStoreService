@@ -22,7 +22,7 @@ func FileUploadHandler(uri, key, method string, args []string) []*http.Request {
 
 		file, err := os.Open(f)
 		if err != nil {
-			fmt.Printf("!!! %s !!!\n\n", err)
+			fmt.Printf("Error: %s\n", err)
 			continue
 		}
 
