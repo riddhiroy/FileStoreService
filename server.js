@@ -5,8 +5,15 @@ const bodyParser = require('body-parser')
 const multer = require('multer');
 const GridFsStorage = require('multer-gridfs-storage').GridFsStorage;
 const Grid = require('gridfs-stream');
+const fs = require('fs');
+const { GridFSBucketReadStream } = require('mongodb');
+const { GridFSBucket, ObjectId } = require('mongodb');
 const methodOverride = require('method-override');
 const { name } = require('ejs');
+
+const WordCount = require('./Models/wordCountModel');
+const { countWordsAndSave } = require('./utils/wordCountUtil');
+const { getFileByFilename, deleteFileByFilename } = require('./utils/crudUtil');
 
 const app = express();
 
@@ -24,6 +31,20 @@ const mongoURI = 'mongodb+srv://riddhiroy2000:riddhiroypassword@mongoclusterridd
 
 // MongoDB Connection
 const conn = mongoose.createConnection(mongoURI)
+mongoose.connect(mongoURI, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true
+});
+
+const db = mongoose.connection;
+
+db.on('error', (error) => {
+    console.error('MongoDB connection error:', error);
+});
+
+db.once('open', () => {
+    console.log('Connected to database FileStore... ');
+});
 
 let gfs
 conn.once('open', () => {
@@ -52,28 +73,36 @@ const upload = multer({
     storage: storage,
     // Filter file uplaod based on request method
     fileFilter: async function (req, file, callback) {
-        const existingFile = await getFileByFilename(file.originalname)
+        const filename = file.originalname
+        const existingFile = await getFileByFilename(filename, gfs)
         if(existingFile) {
-            if (req.method === 'POST')
-                return callback(`Error: File upload attempted for an already existing file ${file.originalname}`)
-            else if (req.method === 'PUT') {
-                const isDeleted = await deleteFileByFilename(file.originalname)
-                console.log(isDeleted)
-                return callback(null, true)
+            if (req.method === 'POST') // add request, does not allow adding when file exists
+                return callback(`Error: File upload attempted for an already existing file ${filename}`)
+            else if (req.method === 'PUT') { // update request, updates the file when file exists
+                console.log(`Existing file ${filename} getting updated ...`)
+                const fileDeleteStatus = await deleteFileByFilename(filename, gfs, conn)
             }
-        }
-        if(req.method === 'PUT'){
-            console.log(`File did not exist in store. Created file ${file.originalname}`);
+        } else if(req.method === 'PUT'){ // update request, creates file when file is new
+            console.log(`File did not exist in store. Creating file ${filename} ...`);
+            console.log(`File: ${JSON.stringify(file)}`)
         }
         callback(null, true)
     }
 })
 
+
+// @route POST /
+// @desc uplaods file to db
 app.post('/add', upload.single('file'), async (req, res) => {
     console.log("File Added:\n", {file: req.file})
+
+    await countWordsAndSave(req.file.id, storage)
+
     res.send(`Added file ${req.file.originalname} to the file store.`)
 })
 
+// @route GET /
+// @desc lists file names stored in db
 app.get('/ls', async (req, res) => {
     try {
         let files = await gfs.files.find().toArray();
@@ -88,7 +117,10 @@ app.get('/ls', async (req, res) => {
     }
 })
 
+// @route DELETE /
+// @desc removes files from db
 app.delete('/rm', async (req, res) => {
+    //validating request body
     const schema = Joi.object({
         name: Joi.string().required()
     })
@@ -98,73 +130,56 @@ app.delete('/rm', async (req, res) => {
         res.status(400).send(result.error.details[0].message)
         return
     }
+
+    //Deletion operation starts
     try {
-        const file = await gfs.files.findOne({ filename: req.body.name });
-        // check if file exists in file store
-        if(!file){
-            res.status(400).send('File does not exist in the file store.')
-            return
+        const filename = req.body.name
+        const fileDeleteStatus = await deleteFileByFilename(filename, gfs, conn)
+        switch(fileDeleteStatus){
+            case 0:
+                console.log('File does not exist in the file store.')
+                return res.status(404).send('File does not exist in the file store.')
+            case 1:
+                console.log('File successfully removed from store.')
+                return res.status(200).send(`File successfully removed from store.`)
         }
-        const gsfb = new mongoose.mongo.GridFSBucket(conn.db, { bucketName: 'uploads' });
-        gsfb.delete(file._id);
-        return res.status(200).send(`File successfully removed from store.`)  
     } catch (error) {
         console.log(error.message)
-        res.status(404).send(`Error ${error.message}`)
+        res.status(500).send(`Internal Error: ${error.message}`)
     }
 })
 
+// @route PUT /
+// @desc updates existing files and creates new files
 app.put('/update', upload.single('file'), async (req, res) => {
-
     //TODO: skip sending contents if the server already has it
     try {
-        console.log(`Updated file ${req.file.originalname}`)
-        res.send(`Updated file ${req.file.originalname}`)
+        console.log("File Updated:\n", {file: req.file})
+
+        await countWordsAndSave(req.file.id, storage)
+
+        res.send(`Updated file ${req.file.originalname} in the file store.`)
     } catch (error) {
         console.log(error.message);
         res.status(500).send(`Error ${error.message}`);
     }
 })
 
+// @route GET /
+// @desc gets the total word count in all files
 app.get('/wc', (req, res) => {
 
 })
 
+// @route GET /
+// @desc displays the n least frequent words in all currently stored files
 app.get('/freq-words', (req, res) => {
-
+ 
 })
 
 
 // Utility functions
 
-// Get a file by filename
-const getFileByFilename = async (filename) => {
-    try {
-        return await gfs.files.findOne({ filename });
-    } catch (err) {
-        throw err;
-    }
-};
 
-//Delete a file by filename: returns 1 : successful, 0 : failure
-const deleteFileByFilename = async (filename) => {
-    try {
-        console.log(filename)
-        const file = await gfs.files.findOne({ filename });
-        // check if file exists in file store
-        if(!file){
-            console.log('check 1')
-            console.log(file)
-            return 0
-        }
-        const gsfb = new mongoose.mongo.GridFSBucket(conn.db, { bucketName: 'uploads' });
-        gsfb.delete(file._id);
-        return 1
-    } catch (error) {
-        console.log(error.message)
-        console.log('check 2')
-        return 0
-    }
-}
 
 app.listen(5000, () => console.log('Listening on port 5000...'))
