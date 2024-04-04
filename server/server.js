@@ -10,6 +10,7 @@ const { GridFSBucketReadStream } = require('mongodb');
 const { GridFSBucket, ObjectId } = require('mongodb');
 const methodOverride = require('method-override');
 const { name } = require('ejs');
+const { createClient} = require('redis')
 
 const WordCount = require('./Models/wordCountModel');
 const { countWordsAndSave } = require('./utils/wordCountUtil');
@@ -24,6 +25,26 @@ app.use(methodOverride('_method'))
 
 
 app.set('view engine' , 'ejs');
+
+//Redis Client creation and Connection
+const redisHost = 'redis-18855.c305.ap-south-1-1.ec2.cloud.redislabs.com'
+const redisPassword = 'fA8zf3avUWuXPA6hdIyWn7HReO5JSt5S'
+const redisPort = 18855
+const redisClient = createClient({
+    password: redisPassword,
+    socket: {
+        host: redisHost,
+        port: redisPort
+    }
+});
+redisClient.connect()
+redisClient.on('connect', () => {
+    console.log('Connected to Redis...');
+});
+// Listen for 'error' event to handle errors
+redisClient.on('error', (error) => {
+    console.error('Error connecting to Redis:', error);
+});
 
 
 // MongoDB URI
@@ -52,7 +73,7 @@ conn.once('open', () => {
     gfs.collection('uploads')
 })
 
-// Create storage engine
+// Create mongodb file storage engine
 const storage = new GridFsStorage({
     url: mongoURI,
     file: (req, file) => {
