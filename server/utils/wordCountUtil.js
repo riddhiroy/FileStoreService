@@ -1,5 +1,6 @@
 const { GridFSBucket } = require('mongodb');
 const WordCount = require('../Models/wordCountModel');
+const { addWordFrequencies, removeWordFrequencies } = require('./wordFrequencyUtil')
 
 // Calculates word count for a file identified by file id
 const wordCountByFileId = async (fileId, storage) => {
@@ -12,9 +13,11 @@ const wordCountByFileId = async (fileId, storage) => {
         const downloadStream = bucket.openDownloadStream(fileId);
         let data = '';
 
-        downloadStream.on('data', (chunk) => {
-            data += chunk.toString('utf8');
+        downloadStream.on('data', async (chunk) => {
+            chunkData = chunk.toString('utf8')
+            data += chunkData;
             //add entries to word frequency here.
+            await addWordFrequencies(chunkData)
         });
         
 
@@ -24,22 +27,6 @@ const wordCountByFileId = async (fileId, storage) => {
             resolve(wordCount); // Resolve the promise with the word count
         });
     });
-}
-
-//get file id from filename
-const getFileIdFromfileName = async (filename) => {
-    const file = await gfs.files.findOne({ filename });
-    const fileId = file._id;
-
-    return fileId
-}
-
-// Calculates word count for a file identified by file name
-const wordCountByFileName = async (filename) => {
-    const file = await gfs.files.findOne({ filename });
-    const fileId = file._id;
-
-    return wordCountByFileId(fileId)
 }
 
 //Counts and saves the word count in db
@@ -87,4 +74,4 @@ const removeWordCount = async (fileId)=>{
     }
 }
 
-module.exports = { wordCountByFileId, wordCountByFileName, countWordsAndSave, getFileIdFromfileName, removeWordCount }
+module.exports = { countWordsAndSave, removeWordCount }

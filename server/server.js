@@ -6,15 +6,13 @@ const multer = require('multer');
 const GridFsStorage = require('multer-gridfs-storage').GridFsStorage;
 const Grid = require('gridfs-stream');
 const fs = require('fs');
-const { GridFSBucketReadStream } = require('mongodb');
-const { GridFSBucket, ObjectId } = require('mongodb');
 const methodOverride = require('method-override');
 const { name } = require('ejs');
-const { createClient} = require('redis')
 
 const WordCount = require('./Models/wordCountModel');
 const { countWordsAndSave } = require('./utils/wordCountUtil');
 const { getFileByFilename, deleteFileByFilename } = require('./utils/crudUtil');
+const { redisClient, getLeastFreqWords } = require('./utils/wordFrequencyUtil')
 
 const app = express();
 
@@ -27,19 +25,9 @@ app.use(methodOverride('_method'))
 app.set('view engine' , 'ejs');
 
 //Redis Client creation and Connection
-const redisHost = 'redis-18855.c305.ap-south-1-1.ec2.cloud.redislabs.com'
-const redisPassword = 'fA8zf3avUWuXPA6hdIyWn7HReO5JSt5S'
-const redisPort = 18855
-const redisClient = createClient({
-    password: redisPassword,
-    socket: {
-        host: redisHost,
-        port: redisPort
-    }
-});
 redisClient.connect()
 redisClient.on('connect', () => {
-    console.log('Connected to Redis...');
+    console.log('Connected to Redis database WordFrequencyStore...');
 });
 // Listen for 'error' event to handle errors
 redisClient.on('error', (error) => {
@@ -52,10 +40,7 @@ const mongoURI = 'mongodb+srv://riddhiroy2000:riddhiroypassword@mongoclusterridd
 
 // MongoDB Connection
 const conn = mongoose.createConnection(mongoURI)
-mongoose.connect(mongoURI, { 
-    useNewUrlParser: true, 
-    useUnifiedTopology: true
-});
+mongoose.connect(mongoURI);
 
 const db = mongoose.connection;
 
@@ -64,7 +49,7 @@ db.on('error', (error) => {
 });
 
 db.once('open', () => {
-    console.log('Connected to database FileStore... ');
+    console.log('Connected to MongoDB database FileStore... ');
 });
 
 let gfs
@@ -132,6 +117,7 @@ app.get('/ls', async (req, res) => {
         let filenames = files.map(file => file.filename);
 
         // Send the array of filenames in the response
+        console.log('Listing stored filenames')
         res.send(filenames);
     } catch (err) {
         res.json({err})
@@ -210,8 +196,11 @@ app.get('/wc', async (req, res) => {
 
 // @route GET /
 // @desc displays the n least frequent words in all currently stored files
-app.get('/freq-words', (req, res) => {
- 
+app.get('/freq-words/:n', async (req, res) => {
+    //Work in progress
+    const n = req.params.n
+    const leastFreqWords = await getLeastFreqWords(n)
+    res.status(200).send(leastFreqWords)
 })
 
 app.listen(5000, () => console.log('Listening on port 5000...'))
