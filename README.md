@@ -8,7 +8,7 @@ A simple file store service (HTTP server and a command line client) that stores 
   - run `node server.js` to start the server. Alternatively you can use `nodemon server,js` so that you do not need to restart your server after changes.
   - The server is now running and listening on port 5000...
 - CLIENT SIDE SETUP:
-  - navigate to teh goClient/ directory
+  - navigate to the goClient/ directory
   - run `go mod tidy`
   - run `go get github.com/spf13/cobra`
   - running command `go run client.go <args>` should work.
@@ -16,5 +16,5 @@ A simple file store service (HTTP server and a command line client) that stores 
     - run `go build -o store client.go`
     - now you can run your commands like: >> `./store <args>`
     - [optional] Add the directory containing the store executable to your PATH.
-      - `export PATH="$PATH:~/projects/store"`
+      - `export PATH="$PATH:~/<project_path>/store"`
       - `source ~/.zshrc` or `source ~/.bashrc`
