@@ -1,4 +1,4 @@
-![image](https://github.com/riddhiroy/FileStoreService/assets/50556008/86a98416-9849-41e9-9050-25122506a45e)# FileStoreService
+# FileStoreService
 A simple file store service (HTTP server and a command line client) that stores plain-text files and performs crud and some other operations on the files.
 
 # Steps to use in local environment
