@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 
@@ -14,7 +16,10 @@ var freqWords = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 
-		var n = 10
+		var n = "10"
+		if len(args) != 0 {
+			n = args[0]
+		}
 		resp, err := http.Get(fmt.Sprintf("http://%v/freq-words/%v", url, n))
 
 		if err != nil {
@@ -23,7 +28,27 @@ var freqWords = &cobra.Command{
 
 		defer resp.Body.Close()
 
-		fmt.Println(resp.Status)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Unmarshal the JSON array into a slice of strings
+		var words []string
+		err = json.Unmarshal(body, &words)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Print each element of the file name array
+		for i, word := range words {
+			fmt.Print(word + " \t")
+			if (i+1)%5 == 0 && i != len(words)-1 {
+				fmt.Println()
+			} else if i == len(words)-1 {
+				fmt.Println("")
+			}
+		}
 	},
 }
 

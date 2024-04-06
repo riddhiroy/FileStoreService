@@ -1,39 +1,38 @@
 const { GridFSBucket } = require('mongodb');
 const WordCount = require('../Models/wordCountModel');
-const { addWordFrequencies, removeWordFrequencies } = require('./wordFrequencyUtil')
+const { addWordFrequencies, removeWordFrequencies } = require('./wordFrequencyUtil');
 
-// Calculates word count for a file identified by file id
+// Calculate word count for a file identified by file id
 const wordCountByFileId = async (fileId, storage) => {
     return new Promise((resolve, reject) => {
-        // Accessing file content using GridFSBucketReadStream
-        const bucket = new GridFSBucket(storage.db, {
+        let wordCount = 0
+        // Access file content using GridFSBucketReadStream
+        const gfsBucket = new GridFSBucket(storage.db, {
             bucketName: 'uploads'
         });
 
-        const downloadStream = bucket.openDownloadStream(fileId);
-        let data = '';
+        const downloadStream = gfsBucket.openDownloadStream(fileId);
 
         downloadStream.on('data', async (chunk) => {
+            // Perform word counting in file data chunks
             chunkData = chunk.toString('utf8')
-            data += chunkData;
-            //add entries to word frequency here.
-            //await addWordFrequencies(chunkData)
+            wordCount += chunkData.split(/\s+/).length;
+
+            // Add entries to word frequency counter
+            await addWordFrequencies(chunkData)
         });
         
 
         downloadStream.on('end', () => {
-            // Perform word counting
-            const wordCount = data.split(/\s+/).length;
-            resolve(wordCount); // Resolve the promise with the word count
+            // Return file word count
+            resolve(wordCount); 
         });
     });
 }
 
-//Counts and saves the word count in db
+// Count and save the word count in MongoDB
 const countWordsAndSave = async (fileId, storage)=>{
-    // Count words
     const wordCount = await wordCountByFileId(fileId, storage);
-    console.log(`Calculated word count: ${wordCount}`);
 
     // Save word count to the wordcounts collection
     try {
@@ -41,8 +40,7 @@ const countWordsAndSave = async (fileId, storage)=>{
             fileId: fileId,
             count: wordCount
         });
-        const wc = wordCountEntry.save();
-        console.log("Word count saved successfully.");
+        await wordCountEntry.save();
     } catch (error) {
         console.error("Error saving word count:", error);
         throw error
@@ -50,23 +48,19 @@ const countWordsAndSave = async (fileId, storage)=>{
 }
 
 const removeWordCount = async (fileId)=>{
-    // remove word count from the wordcounts collection
+    // Remove word count from the wordcounts collection
     try {
         // Find the word count entry based on the file ID and remove it
-        const wordCountEntry = await WordCount.findOne({ fileId: fileId });
+        const wordCountEntry = await WordCount.findOne({ fileId: fileId })
         if (wordCountEntry) {
-            // Retrieve the count value
-            const count = wordCountEntry.count;
-            console.log(wordCountEntry)
+            const count = wordCountEntry.count
 
             // Delete the word count entry, by Id is faster
-            const deletedEntry = await WordCount.findByIdAndDelete(wordCountEntry._id);
-
-            console.log(`Word count entry for file ID ${fileId} with count ${count} removed successfully.`);
-            return { fileId: fileId, count: count };
+            await WordCount.findByIdAndDelete(wordCountEntry._id)
+            return
         } else {
-            console.log(`No word count entry found for file ID ${fileId}.`);
-            return null;
+            console.log(`No word count entry found for file ID ${fileId}.`)
+            return new Error(`No word count entry found for file ID ${fileId}.`)
         }
     } catch (error) {
         console.error("Error removing word count entry:", error)

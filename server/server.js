@@ -74,7 +74,7 @@ const storage = new GridFsStorage({
     }
 });
 
-// Set destination for storing uploaded files
+// Set GridFsStorage as destination for storing uploaded files
 
 const upload = multer({
     storage: storage,
@@ -87,7 +87,7 @@ const upload = multer({
                 return callback(`Error: File upload attempted for an already existing file ${filename}`)
             else if (req.method === 'PUT') { // update request, updates the file when file exists
                 console.log(`Existing file ${filename} getting updated ...`)
-                const fileDeleteStatus = await deleteFileByFilename(filename, gfs, conn)
+                const fileDeleteStatus = await deleteFileByFilename(filename, gfs, conn, storage)
             }
         } else if(req.method === 'PUT'){ // update request, creates file when file is new
             console.log(`File did not exist in store. Creating file ${filename} ...`);
@@ -102,9 +102,7 @@ const upload = multer({
 // @desc uplaods file to db
 app.post('/add', upload.single('file'), async (req, res) => {
     console.log("File Added:\n", {file: req.file})
-
     await countWordsAndSave(req.file.id, storage)
-
     res.send(`Added file ${req.file.originalname} to the file store.`)
 })
 
@@ -118,10 +116,11 @@ app.get('/ls', async (req, res) => {
         let filenames = files.map(file => file.filename);
 
         // Send the array of filenames in the response
-        console.log('Listing stored filenames')
+        console.log(`Listing stored filenames: ${filenames}`)
         res.send(filenames);
-    } catch (err) {
-        res.json({err})
+    } catch (error) {
+        console.log(`Internal Error: ${error.message}`)
+        res.status(500).send(`Internal Error`)
     }
 })
 
@@ -135,14 +134,15 @@ app.delete('/rm', async (req, res) => {
     const result = schema.validate(req.body)
     if(result.error) {
         //400 Bad Request
-        res.status(400).send(result.error.details[0].message)
+        console.log(`Invalid request: ${result.error.details[0].message}`)
+        res.status(400).send(`Invalid request: ${result.error.details[0].message}`)
         return
     }
 
     //Deletion operation starts
     try {
         const filename = req.body.name
-        const fileDeleteStatus = await deleteFileByFilename(filename, gfs, conn)
+        const fileDeleteStatus = await deleteFileByFilename(filename, gfs, conn, storage)
         switch(fileDeleteStatus){
             case 0:
                 console.log('File does not exist in the file store.')
@@ -152,24 +152,20 @@ app.delete('/rm', async (req, res) => {
                 return res.status(200).send(`File successfully removed from store.`)
         }
     } catch (error) {
-        console.log(error.message)
-        res.status(500).send(`Internal Error: ${error.message}`)
+        console.log(`Internal Error: ${error.message}`)
+        res.status(500).send(`Internal Error`)
     }
 })
 
 // @route PUT /
 // @desc updates existing files and creates new files
 app.put('/update', upload.single('file'), async (req, res) => {
-    //TODO: skip sending contents if the server already has it
     try {
-        console.log("File Updated:\n", {file: req.file})
-
         await countWordsAndSave(req.file.id, storage)
-
         res.send(`Updated file ${req.file.originalname} in the file store.`)
     } catch (error) {
-        console.log(error.message);
-        res.status(500).send(`Error ${error.message}`);
+        console.log(`Internal Error: ${error.message}`);
+        res.status(500).send(`Internal Error`);
     }
 })
 
@@ -181,8 +177,8 @@ app.get('/wc', async (req, res) => {
         console.log(`Total word count retrieved: ${total}`)
         res.send(`${total}`);
     } catch (error) {
-        console.error('Error:', error.message);
-        res.status(500).send(`Internal Error: ${error.message}`);
+        console.error('Internal Error:', error.message);
+        res.status(500).send(`Internal Error`);
     }
 })
 
@@ -190,9 +186,14 @@ app.get('/wc', async (req, res) => {
 // @desc displays the n least frequent words in all currently stored files
 app.get('/freq-words/:n', async (req, res) => {
     //Work in progress
-    const n = req.params.n
-    const leastFreqWords = await getLeastFreqWords(n)
-    res.status(200).send(leastFreqWords)
+    try {
+        const n = req.params.n
+        const leastFreqWords = await getLeastFreqWords(n)
+        res.status(200).send(leastFreqWords)
+    } catch (error){
+        console.error(`Internal Error: ${error.message}`);
+        res.status(500).send(`Internal Error`);
+    }
 })
 
 app.listen(5000, () => console.log('Listening on port 5000...'))

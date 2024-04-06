@@ -23,13 +23,13 @@ var addCmd = &cobra.Command{
 
 		client := &http.Client{}
 
-		for _, req := range request {
+		for i, req := range request {
 			resp, err := client.Do(req)
 			if err != nil {
 				log.Fatal(err)
 			} else {
 				if resp.StatusCode == 500 {
-					fmt.Println("Error: File already exists in store")
+					fmt.Printf("Error: File %v already exists in store\n", args[i])
 				} else {
 					body, err := io.ReadAll(resp.Body)
 					if err != nil {
