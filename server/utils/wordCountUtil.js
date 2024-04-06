@@ -74,4 +74,20 @@ const removeWordCount = async (fileId)=>{
     }
 }
 
-module.exports = { countWordsAndSave, removeWordCount }
+const getTotalWordCount = async() => {
+    // Aggregate the total word count across all files
+    let total = 0
+    const totalWordCount = await WordCount.aggregate([
+        {
+            $group: {
+                _id: null,
+                total: { $sum: '$count' }
+            }
+        }
+    ]);
+    if ( totalWordCount.length != 0 ) 
+        total = totalWordCount[0].total
+    return total
+}
+
+module.exports = { countWordsAndSave, removeWordCount, getTotalWordCount }

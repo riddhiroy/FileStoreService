@@ -1,6 +1,5 @@
-const Redis = require('redis');
 const { createClient} = require('redis')
-const { promisify } = require('util');
+const { GridFSBucket } = require('mongodb');
 
 //Redis Client creation and Connection
 const redisHost = 'redis-18855.c305.ap-south-1-1.ec2.cloud.redislabs.com'
@@ -13,11 +12,7 @@ const redisClient = createClient({
         port: redisPort
     }
 });
-
-// Promisify Redis commands for easier async/await usage
-const zaddAsync = promisify(redisClient.zAdd).bind(redisClient);
-const zscoreAsync = promisify(redisClient.zScore).bind(redisClient);
-const zremAsync = promisify(redisClient.zRem).bind(redisClient);
+const key = `word_frequency`
 
 // Function to add word frequencies in Redis sorted set
 async function addWordFrequencies(data) {
@@ -30,48 +25,78 @@ async function addWordFrequencies(data) {
             wordCounts.set(word, (wordCounts.get(word) || 0) + 1)
         });
 
-        console.log(wordCounts)
         // Update Redis sorted set with word frequencies
         for (const [word, frequency] of wordCounts) {
-            await redisClient.zAdd(`word_frequency`, {
-                score: frequency,
-                value: word
-            });
+            await redisClient.zIncrBy(key, frequency, word)
         }
-        const a = await redisClient.zRange(`word_frequency`,0,5,'withscores',function(err,result){
-            //result is array
-            // here even index will hold member
-            // odd index will hold its score
-         })
-        console.log('Updated word frequency for the new/modified files')
+        console.log('Updated word frequency for the new/modified file')
         return 1
-    } catch {
-        console.log('Error encountered during frequency updation')
+    } catch (error) {
+        console.log('Error encountered during frequency updation:', error)
+        throw error
     }
 }
 
 // Function to remove word frequencies from Redis sorted set
 async function removeWordFrequencies(data) {
-    const words = data.split(/\s+/);
+    try {
+        const words = data.split(/\s+/);
+        const wordCounts = new Map();
 
-    // Decrement frequency values in Redis sorted set
-    for (const word of words) {
-        await zscoreAsync('word_frequencies', word)
-            .then(async score => {
-                if (score !== null) {
-                    await zremAsync('word_frequencies', word);
-                }
-            });
+        // Count word frequencies
+        words.forEach(async word => {
+            wordCounts.set(word, (wordCounts.get(word) || 0) + 1)
+        });
+
+        // Update frequency values in Redis sorted set
+        for (const [word, frequency] of wordCounts) {
+            const oldFreq = await redisClient.zScore(key, word)
+            const newFreq = oldFreq - frequency
+            await redisClient.zAdd(`word_frequency`, { score: newFreq, value: word });
+        }
+        console.log('Removed word frequency for the deleted file')
+        return 1
+    } catch(error){
+        console.log('Error encountered during frequency updation:', error)
+        throw error
     }
+
+}
+
+const removeWordFrequenciesByFileId = async (fileId, storage) => {
+    return new Promise((resolve, reject) => {
+        console.log("check 1.5")
+        // Accessing file content using GridFSBucketReadStream
+        const bucket = new GridFSBucket(storage.db, {
+            bucketName: 'uploads'
+        });
+        const downloadStream = bucket.openDownloadStream(fileId);
+        let data = '';
+        downloadStream.on('data', async (chunk) => {
+            chunkData = chunk.toString('utf8')
+            data += chunkData;
+            //add entries to word frequency here.
+            await removeWordFrequencies(chunkData)
+        });
+        
+
+        downloadStream.on('end', () => {
+            // Perform word counting
+            const wordCount = data.split(/\s+/).length;
+            resolve(wordCount); // Resolve the promise with the word count
+        });
+    });
 }
 
 async function getLeastFreqWords(n){
-    const a = await redisClient.zRange(`word_frequency`,0,n,'withscores',function(err,result){
-        //result is array
-        // here even index will hold member
-        // odd index will hold its score
-     })
-
+    if (n==0) return []
+    const leastFreqWords =  (await redisClient.zRange(key, 0, n-1))
+    //await deleteAllFrequencies()
+    return leastFreqWords
 }
 
-module.exports = {redisClient, addWordFrequencies, removeWordFrequencies, getLeastFreqWords}
+async function deleteAllFrequencies(){
+    await redisClient.del(key)
+}
+
+module.exports = {redisClient, addWordFrequencies, removeWordFrequencies, getLeastFreqWords, removeWordFrequenciesByFileId}

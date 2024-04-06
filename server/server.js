@@ -13,6 +13,7 @@ const WordCount = require('./Models/wordCountModel');
 const { countWordsAndSave } = require('./utils/wordCountUtil');
 const { getFileByFilename, deleteFileByFilename } = require('./utils/crudUtil');
 const { redisClient, getLeastFreqWords } = require('./utils/wordFrequencyUtil')
+const { getTotalWordCount } = require('./utils/wordCountUtil')
 
 const app = express();
 
@@ -176,16 +177,7 @@ app.put('/update', upload.single('file'), async (req, res) => {
 // @desc gets the total word count in all files
 app.get('/wc', async (req, res) => {
     try {
-        // Aggregate the total word count across all files
-        const totalWordCount = await WordCount.aggregate([
-            {
-                $group: {
-                    _id: null,
-                    total: { $sum: '$count' }
-                }
-            }
-        ]);
-        const total = totalWordCount[0].total;
+        const total = await getTotalWordCount()
         console.log(`Total word count retrieved: ${total}`)
         res.send(`${total}`);
     } catch (error) {
