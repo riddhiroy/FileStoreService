@@ -17,7 +17,7 @@ const wordCountByFileId = async (fileId, storage) => {
             chunkData = chunk.toString('utf8')
             data += chunkData;
             //add entries to word frequency here.
-            await addWordFrequencies(chunkData)
+            //await addWordFrequencies(chunkData)
         });
         
 
