@@ -97,10 +97,23 @@ async function getLeastFreqWords(n){
     return leastFreqWords
 }
 
+// Return list of n least frequent words
+async function getMostFreqWords(n){
+    if (n==0) return []
+    const totalSetEntries = await redisClient.zCard(REDIS_SORTED_SET_NAME)
+    let mostFreqWords = []
+    if(n > totalSetEntries) {
+        mostFreqWords = await redisClient.zRange(REDIS_SORTED_SET_NAME, 0, totalSetEntries)
+    } else {
+        mostFreqWords = await redisClient.zRange(REDIS_SORTED_SET_NAME, totalSetEntries-n, totalSetEntries)
+    }
+    // Set return array to descending order of frequency
+    return mostFreqWords.reverse()
+}
 
 // Delete all frequency entries from Redis sorted set
 async function deleteAllFrequencies(){
     await redisClient.del(REDIS_SORTED_SET_NAME)
 }
 
-module.exports = {redisClient, addWordFrequencies, getLeastFreqWords, removeWordFrequenciesByFileId}
+module.exports = {redisClient, addWordFrequencies, getLeastFreqWords, getMostFreqWords, removeWordFrequenciesByFileId}

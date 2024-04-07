@@ -8,8 +8,8 @@ const Grid = require('gridfs-stream');
 const methodOverride = require('method-override');
 
 const { countWordsAndSave } = require('./utils/wordCountUtil');
-const { getFileByFilename, deleteFileByFilename } = require('./utils/crudUtil');
-const { redisClient, getLeastFreqWords } = require('./utils/wordFrequencyUtil')
+const { getFileByFilename, deleteFileByFilename, isNumeric } = require('./utils/crudUtil');
+const { redisClient, getLeastFreqWords, getMostFreqWords } = require('./utils/wordFrequencyUtil')
 const { getTotalWordCount } = require('./utils/wordCountUtil')
 const commonConstants = require('./constants/commonConstants')
 
@@ -179,11 +179,23 @@ app.get('/wc', async (req, res) => {
 
 // @route GET /
 // @desc displays the n least frequent words in all currently stored files
-app.get('/freq-words/:n', async (req, res) => {
+app.get('/freq-words', async (req, res) => {
     try {
-        const n = req.params.n
-        const leastFreqWords = await getLeastFreqWords(n)
-        res.status(200).send(leastFreqWords)
+        const n = req.query.limit
+        if (!isNumeric(n)) {
+            return res.status(500).send(commonConstants.INVALID_LIMIT_TYPE)
+        }
+        const order = req.query.order
+        let freqWords = []
+        if (order == "dsc") {
+            freqWords = await getMostFreqWords(n)
+        } else if (order == "asc") {
+            freqWords = await getLeastFreqWords(n)
+        }
+        else {
+            return res.status(500).send(commonConstants.INVALID_ORDER_TYPE)
+        }
+        res.status(200).send(freqWords)
     } catch (error){
         console.error(`Internal Error: ${error.message}`);
         res.status(500).send(commonConstants.INTERNAL_ERROR_MESSAGE);

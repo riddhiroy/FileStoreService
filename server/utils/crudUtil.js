@@ -42,4 +42,9 @@ const deleteFileByFilename = async (filename, gfs, conn, storage) => {
     }
 }
 
-module.exports = { getFileByFilename, deleteFileByFilename }
+// Check if string is numeric(with a positive integer) or not
+function isNumeric(str) {
+    return /^\d+$/.test(str); // Matches only digits
+  }
+
+module.exports = { getFileByFilename, deleteFileByFilename, isNumeric }

@@ -7,6 +7,8 @@ module.exports = {
     MONGODB_COLLECTION_WORDCOUNT: 'WordCount',
     REDIS_SORTED_SET_NAME: 'word_frequency',
     INTERNAL_ERROR_MESSAGE: 'Internal Error',
+    INVALID_ORDER_TYPE: 'Invalid order type',
+    INVALID_LIMIT_TYPE: 'Invalid limit type, must be an Integer',
     SERVER_PORT: 5000
   };
   
