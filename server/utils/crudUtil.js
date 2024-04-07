@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { ObjectId } = require('bson');
 const { removeWordCount} = require('./wordCountUtil');
 const { removeWordFrequenciesByFileId} = require('./wordFrequencyUtil');
+const { GRIDFS_BUCKET_NAME_UPLOADS } = require('../constants/commonConstants');
 
 
 // Get a file by filename
@@ -26,11 +27,13 @@ const deleteFileByFilename = async (filename, gfs, conn, storage) => {
         const fileId = JSON.stringify(file._id);
         const formattedFileId = new ObjectId( JSON.parse(fileId.replace(/'/g, '"')))
 
+        // Remove frequency entries 
         await removeWordFrequenciesByFileId(formattedFileId, storage)
         
+        //Remove word count entries
         await removeWordCount(file._id)
         
-        const gsfBucket = new mongoose.mongo.GridFSBucket(conn.db, { bucketName: 'uploads' });
+        const gsfBucket = new mongoose.mongo.GridFSBucket(conn.db, { bucketName: GRIDFS_BUCKET_NAME_UPLOADS });
         await gsfBucket.delete(file._id);
         return 1
     } catch (error) {

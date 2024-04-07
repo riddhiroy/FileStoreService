@@ -5,15 +5,13 @@ const bodyParser = require('body-parser')
 const multer = require('multer');
 const GridFsStorage = require('multer-gridfs-storage').GridFsStorage;
 const Grid = require('gridfs-stream');
-const fs = require('fs');
 const methodOverride = require('method-override');
-const { name } = require('ejs');
 
-const WordCount = require('./Models/wordCountModel');
 const { countWordsAndSave } = require('./utils/wordCountUtil');
 const { getFileByFilename, deleteFileByFilename } = require('./utils/crudUtil');
 const { redisClient, getLeastFreqWords } = require('./utils/wordFrequencyUtil')
 const { getTotalWordCount } = require('./utils/wordCountUtil')
+const commonConstants = require('./constants/commonConstants')
 
 const app = express();
 
@@ -22,10 +20,7 @@ app.use(bodyParser.json())
 app.use(express.json());
 app.use(methodOverride('_method'))
 
-
-app.set('view engine' , 'ejs');
-
-//Redis Client creation and Connection
+// Redis Client creation and Connection
 redisClient.connect()
 redisClient.on('connect', () => {
     console.log('Connected to Redis database WordFrequencyStore...');
@@ -37,7 +32,7 @@ redisClient.on('error', (error) => {
 
 
 // MongoDB URI
-const mongoURI = 'mongodb+srv://riddhiroy2000:riddhiroypassword@mongoclusterriddhi.ljucxap.mongodb.net/FileStore?retryWrites=true&w=majority'
+const mongoURI = commonConstants.MONGODB_CONNECTION_STRING
 
 // MongoDB Connection
 const conn = mongoose.createConnection(mongoURI)
@@ -56,7 +51,7 @@ db.once('open', () => {
 let gfs
 conn.once('open', () => {
     gfs = Grid(conn.db, mongoose.mongo)
-    gfs.collection('uploads')
+    gfs.collection(commonConstants.GRIDFS_BUCKET_NAME_UPLOADS)
 })
 
 // Create mongodb file storage engine
@@ -67,7 +62,7 @@ const storage = new GridFsStorage({
             const filename = file.originalname
             const fileInfo = {
                 filename: filename,
-                bucketName: 'uploads'
+                bucketName: commonConstants.GRIDFS_BUCKET_NAME_UPLOADS
             }
             resolve(fileInfo)
         })
@@ -120,26 +115,26 @@ app.get('/ls', async (req, res) => {
         res.send(filenames);
     } catch (error) {
         console.log(`Internal Error: ${error.message}`)
-        res.status(500).send(`Internal Error`)
+        res.status(500).send(commonConstants.INTERNAL_ERROR_MESSAGE)
     }
 })
 
 // @route DELETE /
 // @desc removes files from db
 app.delete('/rm', async (req, res) => {
-    //validating request body
+    // Validate request body
     const schema = Joi.object({
         name: Joi.string().required()
     })
     const result = schema.validate(req.body)
     if(result.error) {
-        //400 Bad Request
+        // 400 Bad Request
         console.log(`Invalid request: ${result.error.details[0].message}`)
         res.status(400).send(`Invalid request: ${result.error.details[0].message}`)
         return
     }
 
-    //Deletion operation starts
+    // Delete operation starts
     try {
         const filename = req.body.name
         const fileDeleteStatus = await deleteFileByFilename(filename, gfs, conn, storage)
@@ -153,7 +148,7 @@ app.delete('/rm', async (req, res) => {
         }
     } catch (error) {
         console.log(`Internal Error: ${error.message}`)
-        res.status(500).send(`Internal Error`)
+        res.status(500).send(commonConstants.INTERNAL_ERROR_MESSAGE)
     }
 })
 
@@ -165,7 +160,7 @@ app.put('/update', upload.single('file'), async (req, res) => {
         res.send(`Updated file ${req.file.originalname} in the file store.`)
     } catch (error) {
         console.log(`Internal Error: ${error.message}`);
-        res.status(500).send(`Internal Error`);
+        res.status(500).send(commonConstants.INTERNAL_ERROR_MESSAGE);
     }
 })
 
@@ -178,22 +173,21 @@ app.get('/wc', async (req, res) => {
         res.send(`${total}`);
     } catch (error) {
         console.error('Internal Error:', error.message);
-        res.status(500).send(`Internal Error`);
+        res.status(500).send(commonConstants.INTERNAL_ERROR_MESSAGE);
     }
 })
 
 // @route GET /
 // @desc displays the n least frequent words in all currently stored files
 app.get('/freq-words/:n', async (req, res) => {
-    //Work in progress
     try {
         const n = req.params.n
         const leastFreqWords = await getLeastFreqWords(n)
         res.status(200).send(leastFreqWords)
     } catch (error){
         console.error(`Internal Error: ${error.message}`);
-        res.status(500).send(`Internal Error`);
+        res.status(500).send(commonConstants.INTERNAL_ERROR_MESSAGE);
     }
 })
 
-app.listen(5000, () => console.log('Listening on port 5000...'))
+app.listen(commonConstants.SERVER_PORT, () => console.log(`Listening on port ${commonConstants.SERVER_PORT}...`))

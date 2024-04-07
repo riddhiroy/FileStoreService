@@ -1,1 +1,1 @@
-Sixth client side file.
+Sixth client side file

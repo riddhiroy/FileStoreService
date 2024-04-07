@@ -1,18 +1,15 @@
 const { createClient} = require('redis')
 const { GridFSBucket } = require('mongodb');
+const { REDIS_SORTED_SET_NAME, REDIS_PASSWORD, REDIS_HOST, REDIS_PORT, GRIDFS_BUCKET_NAME_UPLOADS } = require('../constants/commonConstants');
 
 // Redis client creation and connection
-const redisHost = 'redis-18855.c305.ap-south-1-1.ec2.cloud.redislabs.com'
-const redisPassword = 'fA8zf3avUWuXPA6hdIyWn7HReO5JSt5S'
-const redisPort = 18855
 const redisClient = createClient({
-    password: redisPassword,
+    password: REDIS_PASSWORD,
     socket: {
-        host: redisHost,
-        port: redisPort
+        host: REDIS_HOST,
+        port: REDIS_PORT
     }
 });
-const key = `word_frequency`
 
 // Function to add word frequencies in Redis sorted set, return map of wordCounts for the file
 async function addWordFrequencies(data) {
@@ -27,7 +24,7 @@ async function addWordFrequencies(data) {
 
         // Update frequency values in Redis sorted set
         for (const [word, frequency] of wordCounts) {
-            await redisClient.zIncrBy(key, frequency, word)
+            await redisClient.zIncrBy(REDIS_SORTED_SET_NAME, frequency, word)
         }
         return wordCounts
     } catch (error) {
@@ -49,18 +46,18 @@ async function removeWordFrequencies(data) {
 
         // Update frequency values in Redis sorted set
         for (const [word, frequency] of wordCounts) {
-            const oldFreq = await redisClient.zScore(key, word)
+            const oldFreq = await redisClient.zScore(REDIS_SORTED_SET_NAME, word)
             const newFreq = oldFreq - frequency
             if (newFreq == 0) {
                 // Delete the entry when frequency becomes 0
                 try {
-                    await redisClient.zRem(key,word);
+                    await redisClient.zRem(REDIS_SORTED_SET_NAME,word);
                 } catch (error) {
                     console.error('Error removing word from sorted set:', error);
                     throw error
                 }
             } else {
-                await redisClient.zAdd(key, { score: newFreq, value: word });
+                await redisClient.zAdd(REDIS_SORTED_SET_NAME, { score: newFreq, value: word });
             }
         }
         return 1
@@ -77,7 +74,7 @@ const removeWordFrequenciesByFileId = async (fileId, storage) => {
     return new Promise((resolve, reject) => {
         // Accessing file content using GridFSBucketReadStream
         const bucket = new GridFSBucket(storage.db, {
-            bucketName: 'uploads'
+            bucketName: GRIDFS_BUCKET_NAME_UPLOADS
         });
 
         const downloadStream = bucket.openDownloadStream(fileId);
@@ -96,14 +93,14 @@ const removeWordFrequenciesByFileId = async (fileId, storage) => {
 // Return list of n least frequent words
 async function getLeastFreqWords(n){
     if (n==0) return []
-    const leastFreqWords =  await redisClient.zRange(key, 0, n-1)
+    const leastFreqWords =  await redisClient.zRange(REDIS_SORTED_SET_NAME, 0, n-1)
     return leastFreqWords
 }
 
 
 // Delete all frequency entries from Redis sorted set
 async function deleteAllFrequencies(){
-    await redisClient.del(key)
+    await redisClient.del(REDIS_SORTED_SET_NAME)
 }
 
 module.exports = {redisClient, addWordFrequencies, getLeastFreqWords, removeWordFrequenciesByFileId}
