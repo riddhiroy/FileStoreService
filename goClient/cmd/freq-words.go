@@ -47,7 +47,7 @@ var freqWordsCmd = &cobra.Command{
 
 		// Print each element of the file name array
 		for i, word := range words {
-			fmt.Print(word + "\t")
+			fmt.Print(word + " \t")
 			if (i+1)%5 == 0 && i != len(words)-1 {
 				fmt.Println()
 			} else if i == len(words)-1 {

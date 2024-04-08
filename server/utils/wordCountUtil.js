@@ -1,6 +1,6 @@
 const { GridFSBucket } = require('mongodb');
 const WordCount = require('../Models/wordCountModel');
-const { addWordFrequencies, removeWordFrequencies } = require('./wordFrequencyUtil');
+const { addWordFrequencies, removeWordFrequencies, removeSpacesAndPunctuations } = require('./wordFrequencyUtil');
 
 // Calculate word count for a file identified by file id
 const wordCountByFileId = async (fileId, storage) => {
@@ -16,10 +16,12 @@ const wordCountByFileId = async (fileId, storage) => {
         downloadStream.on('data', async (chunk) => {
             // Perform word counting in file data chunks
             chunkData = chunk.toString('utf8')
-            wordCount += chunkData.split(/\s+/).length;
+            const words = chunkData.split(/\s+/)
+            const cleanedWords = removeSpacesAndPunctuations(words)
+            wordCount += cleanedWords.length
 
             // Add entries to word frequency counter
-            await addWordFrequencies(chunkData)
+            await addWordFrequencies(cleanedWords)
         });
         
 

@@ -12,9 +12,8 @@ const redisClient = createClient({
 });
 
 // Function to add word frequencies in Redis sorted set, return map of wordCounts for the file
-async function addWordFrequencies(data) {
+async function addWordFrequencies(words) {
     try{
-        const words = data.split(/\s+/);
         const wordCounts = new Map();
 
         // Count word frequencies
@@ -34,9 +33,8 @@ async function addWordFrequencies(data) {
 }
 
 // Function to remove word frequencies from Redis sorted set
-async function removeWordFrequencies(data) {
+async function removeWordFrequencies(words) {
     try {
-        const words = data.split(/\s+/);
         const wordCounts = new Map();
 
         // Count word frequencies
@@ -81,7 +79,9 @@ const removeWordFrequenciesByFileId = async (fileId, storage) => {
 
         downloadStream.on('data', async (chunk) => {
             chunkData = chunk.toString('utf8')
-            await removeWordFrequencies(chunkData)
+            const words = chunkData.split(/\s+/)
+            const cleanedWords = removeSpacesAndPunctuations(words)
+            await removeWordFrequencies(cleanedWords)
         });
 
         downloadStream.on('end', () => {
@@ -116,4 +116,15 @@ async function deleteAllFrequencies(){
     await redisClient.del(REDIS_SORTED_SET_NAME)
 }
 
-module.exports = {redisClient, addWordFrequencies, getLeastFreqWords, getMostFreqWords, removeWordFrequenciesByFileId}
+function removeSpacesAndPunctuations(words) {
+    // Define regular expression to match spaces and punctuations except apostrophes in words
+    const regex = /[^\w\s']/g;
+
+    // Remove spaces and punctuations from each word in the array
+    const cleanedWords = words.map(word => word.replace(regex, '').toLowerCase())
+                                                .filter(word => word !== ''); // Filter out empty strings
+
+    return cleanedWords;
+}
+
+module.exports = {redisClient, addWordFrequencies, getLeastFreqWords, getMostFreqWords, removeSpacesAndPunctuations, removeWordFrequenciesByFileId}

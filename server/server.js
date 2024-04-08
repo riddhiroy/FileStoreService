@@ -140,11 +140,11 @@ app.delete('/rm', async (req, res) => {
         const fileDeleteStatus = await deleteFileByFilename(filename, gfs, conn, storage)
         switch(fileDeleteStatus){
             case 0:
-                console.log('File does not exist in the file store.')
-                return res.status(404).send('File does not exist in the file store.')
+                console.log(`File ${filename} does not exist in the file store.`)
+                return res.status(404).send(`File ${filename} does not exist in the file store.`)
             case 1:
-                console.log('File successfully removed from store.')
-                return res.status(200).send(`File successfully removed from store.`)
+                console.log(`File ${filename} successfully removed from store.`)
+                return res.status(200).send(`File ${filename} successfully removed from store.`)
         }
     } catch (error) {
         console.log(`Internal Error: ${error.message}`)
