@@ -5,6 +5,8 @@ A simple file store service (HTTP server and a command line client) that stores 
 - clone this repository in the desired folder [git clone repository link](https://github.com/riddhiroy/FileStoreService.git)
 - SERVER SIDE SETUP:
   - you should have Node and npm in your sytem already. Refer [installation guide](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+  - navigate to the `server/` directory. This directory has the `server.js` that we will run for our server.
+  - run `npm insatll` to install all the required dependencies as mentioned in `package.json`
   - run `node server.js` to start the server. Alternatively you can use `nodemon server.js` so that you do not need to restart your server after changes.
   - The server is now running and listening on port 5000
 - CLIENT SIDE SETUP:
