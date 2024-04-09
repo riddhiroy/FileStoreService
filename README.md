@@ -2,6 +2,8 @@
 A simple file store service (HTTP server and a command line client) that stores plain-text files. The server receives requests from clients to store, update, delete files, and perform operations on files stored in the server.
 
 # Steps to use in local environment
+
+**IMPORTANT: There has been a recent deprecation of ObjectId class in Bson, Latest commit replaces bson Object Id usage with imports from mongodb. Please pull the latest commit (9th April 4:35pm IST). Without the latest pull (one line change), the /rm function will throw errors.**
 - clone this repository in the desired folder [git clone repository link](https://github.com/riddhiroy/FileStoreService.git)
 - SERVER SIDE SETUP:
   - you should have Node and npm in your sytem already. Refer [installation guide](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
