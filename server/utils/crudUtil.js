@@ -42,9 +42,14 @@ const deleteFileByFilename = async (filename, gfs, conn, storage) => {
     }
 }
 
+const getArrayOfExistingfiles = async(gfs)=>{
+    return  await gfs.files.find().toArray()
+}
+
 // Check if string is numeric(with a positive integer) or not
 function isNumeric(str) {
-    return /^\d+$/.test(str); // Matches only digits
+    const a =  /^\d+$/.test(str)
+    return a; // Matches only digits
   }
 
-module.exports = { getFileByFilename, deleteFileByFilename, isNumeric }
+module.exports = { getFileByFilename, deleteFileByFilename, isNumeric, getArrayOfExistingfiles }

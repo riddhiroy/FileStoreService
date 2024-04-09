@@ -8,7 +8,7 @@ const Grid = require('gridfs-stream');
 const methodOverride = require('method-override');
 
 const { countWordsAndSave } = require('./utils/wordCountUtil');
-const { getFileByFilename, deleteFileByFilename, isNumeric } = require('./utils/crudUtil');
+const { getFileByFilename, deleteFileByFilename, isNumeric, getArrayOfExistingfiles } = require('./utils/crudUtil');
 const { redisClient, getLeastFreqWords, getMostFreqWords } = require('./utils/wordFrequencyUtil')
 const { getTotalWordCount } = require('./utils/wordCountUtil')
 const commonConstants = require('./constants/commonConstants')
@@ -21,7 +21,7 @@ app.use(express.json());
 app.use(methodOverride('_method'))
 
 // Redis Client creation and Connection
-redisClient.connect()
+const redisConn = redisClient.connect()
 redisClient.on('connect', () => {
     console.log('Connected to Redis database WordFrequencyStore...');
 });
@@ -105,7 +105,7 @@ app.post('/add', upload.single('file'), async (req, res) => {
 // @desc lists file names stored in db
 app.get('/ls', async (req, res) => {
     try {
-        let files = await gfs.files.find().toArray();
+        const files = await getArrayOfExistingfiles(gfs)
         
         // Extract filenames from the files array
         let filenames = files.map(file => file.filename);
@@ -114,7 +114,7 @@ app.get('/ls', async (req, res) => {
         console.log(`Listing stored filenames: ${filenames}`)
         res.send(filenames);
     } catch (error) {
-        console.log(`Internal Error: ${error.message}`)
+        console.error(`Internal Error: ${error.message}`)
         res.status(500).send(commonConstants.INTERNAL_ERROR_MESSAGE)
     }
 })
@@ -129,7 +129,7 @@ app.delete('/rm', async (req, res) => {
     const result = schema.validate(req.body)
     if(result.error) {
         // 400 Bad Request
-        console.log(`Invalid request: ${result.error.details[0].message}`)
+        console.error(`Invalid request: ${result.error.details[0].message}`)
         res.status(400).send(`Invalid request: ${result.error.details[0].message}`)
         return
     }
@@ -147,7 +147,7 @@ app.delete('/rm', async (req, res) => {
                 return res.status(200).send(`File ${filename} successfully removed from store.`)
         }
     } catch (error) {
-        console.log(`Internal Error: ${error.message}`)
+        console.error(`Internal Error: ${error.message}`)
         res.status(500).send(commonConstants.INTERNAL_ERROR_MESSAGE)
     }
 })
@@ -159,7 +159,7 @@ app.put('/update', upload.single('file'), async (req, res) => {
         await countWordsAndSave(req.file.id, storage)
         res.send(`Updated file ${req.file.originalname} in the file store.`)
     } catch (error) {
-        console.log(`Internal Error: ${error.message}`);
+        console.error(`Internal Error: ${error.message}`);
         res.status(500).send(commonConstants.INTERNAL_ERROR_MESSAGE);
     }
 })
@@ -202,4 +202,6 @@ app.get('/freq-words', async (req, res) => {
     }
 })
 
-app.listen(commonConstants.SERVER_PORT, () => console.log(`Listening on port ${commonConstants.SERVER_PORT}...`))
+const server = app.listen(commonConstants.SERVER_PORT, () => console.log(`Listening on port ${commonConstants.SERVER_PORT}...`))
+
+module.exports = { app, server };
