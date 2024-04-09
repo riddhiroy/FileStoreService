@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { ObjectId } = require('bson');
+const { ObjectId } = require('mongodb');
 const { removeWordCount} = require('./wordCountUtil');
 const { removeWordFrequenciesByFileId} = require('./wordFrequencyUtil');
 const { GRIDFS_BUCKET_NAME_UPLOADS } = require('../constants/commonConstants');
