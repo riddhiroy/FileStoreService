@@ -12,7 +12,7 @@ metadata:
   namespace: file-store
 spec:
   progressDeadlineSeconds: 600
-  replicas: 3
+  replicas: 4
   revisionHistoryLimit: 10
   selector:
     matchLabels:
