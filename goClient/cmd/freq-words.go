@@ -12,7 +12,7 @@ import (
 
 var freqWordsCmd = &cobra.Command{
 	Use:   "freq-words",
-	Short: "List n least frequent words in the store",
+	Short: "List n frequent words in the store",
 
 	Run: func(cmd *cobra.Command, args []string) {
 

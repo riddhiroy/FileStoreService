@@ -7,8 +7,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: filestore-server
-  name: filestore-server
+    app: file-store-server
+  name: file-store-server
   namespace: file-store
 spec:
   progressDeadlineSeconds: 600
@@ -16,7 +16,7 @@ spec:
   revisionHistoryLimit: 10
   selector:
     matchLabels:
-      app: filestore-server
+      app: file-store-server
   strategy:
     rollingUpdate:
       maxSurge: 25%
@@ -26,7 +26,7 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
-        app: filestore-server
+        app: file-store-server
     spec:
       containers:
       - image: riddhiroy/file-store-server:v1
