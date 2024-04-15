@@ -7,7 +7,6 @@ ADD server/utils/* /app/utils/
 ADD server/constants/* /app/constants/
 ADD server/tests/* /app/tests/
 WORKDIR /app
-# COPY server/package.json ./
 RUN npm install
 # Command to run the application
 CMD ["node", "server.js"]
